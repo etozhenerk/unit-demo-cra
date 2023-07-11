@@ -17,6 +17,7 @@ jobs:
         run: |
           npm install conventional-changelog-conventionalcommits
           npm install commitlint@latest
+          npm install @commitlint/config-conventional
 
       - name: Set Config
         run: echo "module.exports = {extends:['@commitlint/config-conventional']}" > commitlint.config.js
