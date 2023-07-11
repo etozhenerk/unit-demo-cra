@@ -33,11 +33,6 @@
         "e2e": "playwright test --project=chromium && playwright show-report",
         "test-ci": "CI=true npm test -- --reporters=\"default\" --reporters=\"jest-html-reporter\" --reporters=\"jest-teamcity\""
     },
-    "husky": {
-        "hooks": {
-            "commit-msg": "npx commitlint -E HUSKY_GIT_PARAMS -g 'commitlint.config.js'"
-        }
-    },
     "eslintConfig": {
         "extends": [
             "react-app",
