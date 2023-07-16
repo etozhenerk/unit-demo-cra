@@ -72,7 +72,7 @@ jobs:
           )
 
           ISSUE_ID=$(gh issue list --json number,title,labels -q \
-            ".[] | select(.title == \"${ISSUE_TITLE}\" and .labels[].name == \"RELEASE\") | .number")
+            ".[] | select(.title == \"${ISSUE_TITLE}\") | .number")
           if [ ! -z "$ISSUE_ID" ]; then
             echo "Editing existing issue"
             gh issue edit $ISSUE_ID --body "$ISSUE_BODY"
