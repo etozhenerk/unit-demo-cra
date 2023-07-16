@@ -27,6 +27,7 @@
     },
     "scripts": {
         "prepare": "husky install",
+        "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
         "start": "react-scripts start",
         "build": "react-scripts build",
         "eject": "react-scripts eject",
@@ -63,6 +64,7 @@
         "@playwright/test": "^1.28.0",
         "@types/react-helmet": "^6.1.5",
         "commitlint": "^17.6.6",
+        "eslint": "^8.45.0",
         "husky": "^8.0.3",
         "jest-html-reporter": "^3.7.0"
     }
