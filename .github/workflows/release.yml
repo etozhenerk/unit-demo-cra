@@ -58,24 +58,6 @@ jobs:
 
     outputs:
       issueNumber: ${{ steps.issue.outputs.issueId }}
-
-  tests:
-    name: tests
-    runs-on: ubuntu-latest
-    needs: [create-issue]
-    steps:
-      - name: Run check-tests
-        uses: ./.github/workflows/check-tests.yml
-
-      - name: Comment issue with test results
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          issue-number: ${{ needs.create-issue.outputs.issueNumber }}
-          body: |
-            Download test results:
-            ${{github.server_url}}/${{ github.repository }}/actions/runs/${{github.run_id}}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
   deploy:
     name: Run Deploy
     uses: ./.github/workflows/deploy.yml
