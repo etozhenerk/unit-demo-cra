@@ -20,7 +20,7 @@ jobs:
         id: changelog
         uses: requarks/changelog-action@v1
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
           tag: ${{ github.ref_name }}
           writeToFile: false
 
@@ -28,7 +28,7 @@ jobs:
         id: issue
         env:
           TAG_NAME: ${{ github.ref_name }}
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
           TITLE="Release ${{ github.ref_name }}"
           BODY=$(cat << 'EOF'
