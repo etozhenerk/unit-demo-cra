@@ -5,6 +5,10 @@ on:
        - 'v\d+'
 
 jobs:
+  check-tests:
+    name: Run check-tests
+    uses: ./.github/workflows/check-tests.yml
+
   create-issue:
     runs-on: ubuntu-latest
     defaults:
@@ -58,6 +62,65 @@ jobs:
 
     outputs:
       issueNumber: ${{ steps.issue.outputs.issueId }}
-  deploy:
-    name: Run Deploy
-    uses: ./.github/workflows/deploy.yml
+
+  tests-log:
+    name: tests-log
+    runs-on: ubuntu-latest
+    needs: [create-issue, check-tests]
+    steps:
+      - name: Comment issue with test results
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ needs.create-issue.outputs.issueNumber }}
+          body: |
+            Download test results:
+            ${{github.server_url}}/${{ github.repository }}/actions/runs/${{github.run_id}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-deploy:
+    needs: check-tests
+    name: Deploy
+    runs-on: ubuntu-latest
+      
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+        
+      - name: Install deps
+        run: npm ci
+    
+      - name: Build application
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+        run: PUBLIC_URL="${BASE_URL}" npm run build
+        
+        if: success()
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: build/
+          retention-days: 30
+        
+      - name: Deploy to GitHub Pages
+        id: deployment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          npm i gh-pages
+          git remote set-url origin https://git:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          npx gh-pages -d build -u "github-actions-bot <support+actions@github.com>"
+      
+        if: success()
+      - name: Close Issue
+        uses: peter-evans/close-issue@v3
+        with:
+          issue-number: ${{ needs.create-issue.outputs.issueNumber }}
+          comment: |
+            Close Issue
+            Issue automatically closed
