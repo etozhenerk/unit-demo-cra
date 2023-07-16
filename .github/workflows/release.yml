@@ -51,7 +51,7 @@ jobs:
           echo "${CHANGELOG}" >> "$GITHUB_OUTPUT"
           echo "EOF" >> $GITHUB_OUTPUT
           
-      - name: ✍️ Create release issue
+      - name: Create release issue
         env:
           GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
         run: |
