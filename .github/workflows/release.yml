@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/check-tests.yml
 
   create-issue:
+    name: Run create-issue
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,7 +65,7 @@ jobs:
       issueNumber: ${{ steps.issue.outputs.issueId }}
 
   tests-log:
-    name: tests-log
+    name: Run tests-log
     runs-on: ubuntu-latest
     needs: [create-issue, check-tests]
     steps:
@@ -79,8 +80,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-deploy:
-    needs: check-tests
-    name: Deploy
+    needs: [create-issue,check-tests]
+    name: Run build-deploy
     runs-on: ubuntu-latest
       
     steps:
