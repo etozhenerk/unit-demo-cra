@@ -5,78 +5,77 @@ on:
        - 'v\d+'
 
 jobs:
-  create_release_branch:
-    name: Create release branch
+  create-issue:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GH_ACCESS_TOKEN }}
-
-      - name: Create release branch
-        run: |
-          BRANCH_NAME="release-${{ github.ref_name }}"
-          git branch -d "$BRANCH_NAME" || true;
-          git branch "$BRANCH_NAME"
-          git push -f -u origin "$BRANCH_NAME"
-          
-  create_issue:
-    name: Create Release issue
-    runs-on: ubuntu-latest
-    needs: create_release_branch
-    permissions:
-      issues: write
-    steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
-      - name: Define tags
-        id: get_tags
-        run: |
-          CURRENT_TAG=${{ github.ref_name }} 
-          TIMESTAMP=$(git show -s --format=%ai ${CURRENT_TAG})
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${CURRENT_TAG}^)
-          echo "current=${CURRENT_TAG}" >> "$GITHUB_OUTPUT"
-          echo "previous=${PREVIOUS_TAG}" >> "$GITHUB_OUTPUT"
-          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate changelog
-        id: generate_log
-        run: |
-          CHANGELOG=$(git log --pretty=format:"- %s" "${{ steps.get_tags.outputs.previous }}...${{ steps.get_tags.outputs.current }}")
-          echo "Display changelog:"
-          echo $CHANGELOG
-          echo "log<<EOF" >> $GITHUB_OUTPUT
-          echo "${CHANGELOG}" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-      - name: Create release issue
+      - name: Create changelog
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ github.ref_name }}
+          writeToFile: false
+
+      - name: Create issue
+        id: issue
         env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ISSUE_TITLE="Release ${{ github.ref_name }}"
-          ISSUE_BODY=$(cat << EOF
-          Release ${{ github.ref_name }}
+          TITLE="Release ${{ github.ref_name }}"
+          BODY=$(cat << 'EOF'
 
-          Автор: ${{ github.actor }}
+          # Release ${{ github.ref_name }}
 
-          Время: ${{ steps.get_tags.outputs.timestamp }}
-          
-          Changelog:
+          Автор релиза: @${{ github.actor }}
+          Дата релиза: ${{ github.event.head_commit.timestamp }}
+          Версия релиза: ${{ github.ref_name }}
 
-          ${{ steps.generate_log.outputs.log }}
+          ## CHANGELOG
+          ${{ steps.changelog.outputs.changes }}
 
-          [Deploy action](https://github.com/etozhenerk/unit-demo-cra/actions/workflows/deploy.yml)
           EOF
           )
 
-          ISSUE_ID=$(gh issue list --json number,title,labels -q \
-            ".[] | select(.title == \"${ISSUE_TITLE}\" and .labels[].name == \"release\") | .number")
+          ISSUE_ID=$(gh issue list --json number,title -q \
+            ".[] | select(.title == \"$TITLE\") | .number")
           if [ ! -z "$ISSUE_ID" ]; then
-            echo "Editing existing issue"
-            gh issue edit $ISSUE_ID --body "$ISSUE_BODY"
+            gh issue edit $ISSUE_ID --body "$BODY"
           else
-            echo "Creating new issue"
-            gh issue create --title "Release ${{ github.ref_name }}" --body "$ISSUE_BODY" --label "release" --assignee "@me"
+            gh issue create --title "$TITLE" --body "$BODY" --assignee ${{ github.actor }} --label "release"
+            ISSUE_ID=$(gh issue list --json number,title -q \
+            ".[] | select(.title == \"$TITLE\") | .number")
           fi
+          echo "issueId=$ISSUE_ID" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      issueNumber: ${{ steps.issue.outputs.issueId }}
+
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    needs: [create-issue]
+    steps:
+      - name: Run check-tests
+        uses: ./.github/workflows/check-tests.yml
+
+      - name: Comment issue with test results
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ needs.create-issue.outputs.issueNumber }}
+          body: |
+            Download test results:
+            ${{github.server_url}}/${{ github.repository }}/actions/runs/${{github.run_id}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+  deploy:
+    name: Run Deploy
+    uses: ./.github/workflows/deploy.yml
